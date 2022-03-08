@@ -23,12 +23,18 @@ evaluate_and_add_in_c.argtypes= \
      ctypes.c_void_p]
 evaluate_and_add_in_c.restype= ctypes.c_double
 
-def evaluate_and_add(t,*args):
+def evaluate_and_add(t,*args,**kwargs):
     """Evaluate an arbitrary number of functions as a function of time in C,
     adds up the result from each"""
     func_ctype= ctypes.CFUNCTYPE(ctypes.c_double, # Return type
                                  ctypes.c_double) # time
-    func_pyarr= [func_ctype(a) for a in args]
+    if kwargs.get('numba',False):
+        from numba import types, cfunc
+        c_sig= types.double(types.double)
+        func_pyarr= [cfunc(c_sig,nopython=True)(a).ctypes
+                     for a in args]
+    else:
+        func_pyarr= [func_ctype(a) for a in args]
     func_arr = (func_ctype * len(func_pyarr))(*func_pyarr)
     return evaluate_and_add_in_c(t,len(func_pyarr),func_arr)
     
